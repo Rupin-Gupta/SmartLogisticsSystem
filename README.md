@@ -62,3 +62,11 @@ A precipitation factor was added to the dataset using quantile-based binning to 
 - Precipitation feature engineered using quantile binning  
 - README documentation created  
 
+## 🛠 Development Phases
+
+### Phase 1 – Data Engineering
+- Cleaned raw dataset
+- Engineered precipitation feature
+- Extracted structured features
+- Generated processed dataset
+- Created reproducible Jupyter notebook pipeline
