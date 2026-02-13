@@ -224,7 +224,7 @@ To enhance robustness, business logic rules were introduced.
 
 #### Rule 1 – Weather-Traffic Escalation
 If:
-- Precipitation (mm) > 20  
+- Precipitation (mm) > 15  
 - Traffic_Status_Heavy == 1  
 
 → Risk escalated to **Critical**
@@ -270,8 +270,97 @@ Generated:
 Risk distribution example:
 
 - Medium ≈ 32%  
-- High ≈ 24%  
+- High ≈ 24%
 - Critical ≈ 24%  
-- Low ≈ 19%  
+- Low ≈ 20%
 
 Phase 3 completes the structured risk engine of the Smart Logistics Decision System.
+
+---
+
+## 🚦 Phase 4 – Risk-Driven Decision Engine
+
+### 🎯 Objective
+Translate structured risk levels into operational actions using a mathematically grounded and system-aware decision framework.
+
+Phase 4 connects predictive intelligence (Phases 2–3) to executable logistics decisions.
+
+---
+
+### 🔁 Risk → Action Mapping
+
+Risk levels are converted into structured operational actions:
+
+- **Low** → `A_Normal`
+- **Medium** → `B_Monitor`
+- **High** → `C_Reroute_Notify`
+- **Critical** → `D_Reroute_Notify_Redistribute`
+- **High + Asset_Utilization > 90%** → Escalated to `D_Reroute_Notify_Redistribute`
+
+This ensures fleet stress conditions can trigger escalation even when base risk is High.
+
+---
+
+### ⏱ Dynamic Baseline ETA Modeling
+
+Baseline ETA is computed mathematically, not heuristically:
+
+- `operational_base_time` derived from mean waiting time
+- `traffic_delay_factor` computed using average delay probability grouped by traffic level
+- `baseline_eta` calculated as:
+
+Baseline ETA = operational_base_time × traffic_delay_factor
+
+This ensures ETA reflects real model-driven traffic impact rather than arbitrary assumptions.
+
+---
+
+### 🛣 Simulated Route Optimization
+
+When rerouting is triggered:
+
+- Improvement factor calculated from difference between original traffic factor and clear-traffic factor
+- Optimized ETA adjusted proportionally
+- Ensured optimized ETA logically falls between heavy and clear traffic bounds
+- No artificial traffic-status reassignment
+
+This preserves mathematical consistency while simulating realistic route improvement.
+
+---
+
+### 📊 Utilization Impact Analysis
+
+Fleet stress behavior modeled analytically:
+
+- Asset_Utilization bucketed into:
+  - (0–70]
+  - (70–90]
+  - (90–100]
+
+- Computed `stress_gap` between high and medium utilization segments
+- Redistribution logic applied only if impact exceeds defined threshold
+- Redistribution skipped if operational improvement is negligible
+
+This prevents unnecessary fleet movements and avoids overreaction.
+
+---
+
+### 💬 AI-Generated Customer Notifications (yet to do)
+
+When action includes `"Notify"`:
+
+- Structured message automatically generated
+- Context-aware (weather, traffic, utilization stress)
+
+Example output:
+"Due to heavy traffic conditions, your shipment has been proactively rerouted to minimize delay."
+
+---
+
+### 🧠 Architectural Significance
+
+Phase 4 transforms the system into a full decision intelligence pipeline:
+
+Model → Probability → Risk → Action → ETA Adjustment → Notification
+
+This completes the operational decision layer of the Smart Logistics Decision System.
