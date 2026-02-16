@@ -471,3 +471,150 @@ Final System Architecture
 → Customer Notification
 
 This system evolves from predictive modeling into a modular, production-grade logistics decision intelligence platform.
+
+Phase 6 – Financial Intelligence & Batch Shipment Analytics (New)
+Objective
+
+Extend the Smart Logistics Decision System beyond operational prediction into financial exposure modeling and portfolio-level shipment intelligence.
+
+This phase enhances the system with:
+
+Financial impact modeling
+
+Priority-based shipment ranking
+
+Batch shipment intelligence mode
+
+Premium executive dashboard interface
+
+6.1 Financial Impact Engine
+
+To translate operational delay risk into economic exposure, a financial modeling layer was introduced.
+
+For each shipment:
+
+expected_loss = delay_probability × total_delay_cost
+
+
+Where total delay cost may include:
+
+SLA penalty (based on delay severity)
+
+Refund risk (probability-weighted)
+
+Additional shipping or reroute cost
+
+Express handling impact
+
+The Streamlit dashboard now displays:
+
+Expected Delay (minutes)
+
+Expected Financial Loss ($)
+
+Financial severity classification
+
+This allows decision-makers to quantify operational risk in monetary terms.
+
+6.2 Priority Scoring Mechanism
+
+To support operational prioritization, a structured ranking metric was introduced:
+
+priority_score = delay_probability × expected_loss
+
+
+This ensures shipments are ranked not only by risk, but by potential financial impact.
+
+The system can now identify:
+
+Highest exposure shipments
+
+Concentration of High / Critical risks
+
+Portfolio-level financial exposure
+
+This adds a strategic allocation layer to fleet management.
+
+6.3 Batch Shipment Mode
+
+A dual analysis architecture was implemented.
+
+Two Operational Modes:
+
+Single Shipment Analysis
+
+Batch Shipment (CSV Upload)
+
+In Batch Mode, the system:
+
+Accepts structured CSV uploads
+
+Predicts delay probability for each shipment
+
+Classifies risk with rule overrides
+
+Computes baseline and optimized ETA
+
+Estimates financial exposure
+
+Ranks shipments using priority scoring
+
+Allows downloadable analytics results
+
+This transforms the application from a single-inference tool into a logistics portfolio intelligence system.
+
+6.4 Dashboard Upgrade
+
+The Streamlit deployment layer was enhanced
+
+Enhancements include:
+
+Executive Summary panel
+
+Structured KPI layout
+
+ETA comparison visualization
+
+Financial exposure cards
+
+Risk color-coding
+
+Priority ranking table
+
+CSV analysis download feature
+
+The interface now reflects enterprise-grade operational analytics platforms.
+
+Updated System Architecture
+
+# Input
+→ ML Model
+→ Delay Probability
+→ Risk Classification
+→ Rule Overrides
+→ ETA Computation
+→ Route Optimization
+→ Fleet Stress Validation
+→ Financial Impact Engine
+→ Priority Scoring
+→ Executive Dashboard / Batch Analytics
+
+System Maturity Overview
+
+The Smart Logistics Decision System now integrates:
+
+Predictive Modeling
+
+Risk Intelligence
+
+Rule-Based Domain Overrides
+
+Mathematical ETA Optimization
+
+Financial Exposure Modeling
+
+Portfolio-Level Shipment Ranking
+
+Interactive Deployment Interface
+
+The project has evolved from a predictive model into a modular logistics decision intelligence platform with operational and financial awareness.
