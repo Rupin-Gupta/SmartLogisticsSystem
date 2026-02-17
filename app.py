@@ -2,29 +2,24 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import matplotlib.pyplot as plt
 
 from decision_engine import (
-    calculate_financial_impact,
     classify_risk,
     get_action,
     calculate_baseline_eta,
     calculate_optimized_eta,
     generate_notification
 )
+from decision_engine import calculate_financial_impact
 
-# ======================================================
+# ======================================
 # PAGE CONFIG
-# ======================================================
+# ======================================
 
-st.set_page_config(
-    page_title="Smart Logistics Intelligence",
-    layout="wide"
-)
-
-# ======================================================
-# PREMIUM DARK THEME STYLING
-# ======================================================
+st.set_page_config(page_title="Smart Logistics System", layout="centered")
+# ======================================
+# PREMIUM UI STYLING
+# ======================================
 
 st.markdown("""
 <style>
@@ -40,9 +35,8 @@ h1, h2, h3 {
 .metric-card {
     background-color: #1e293b;
     padding: 20px;
-    border-radius: 16px;
+    border-radius: 15px;
     border: 1px solid #334155;
-    text-align: center;
 }
 
 .section-card {
@@ -63,32 +57,50 @@ h1, h2, h3 {
 </style>
 """, unsafe_allow_html=True)
 
-# ======================================================
-# HEADER
-# ======================================================
+st.title("🚚 Smart Logistics Risk Intelligence System")
+# ======================================
+# MODE SELECTION
+# ======================================
 
-st.title("🚚 Smart Logistics Risk Intelligence Platform")
-st.caption("AI-Driven Delay Prediction • Risk Optimization • Financial Exposure Modeling")
-
-st.divider()
-st.sidebar.markdown("## ⚙ Analysis Mode")
-
-mode = st.sidebar.radio(
-    "Select Mode",
-    ["Single Shipment", "Batch Shipment (CSV Upload)"]
+mode = st.radio(
+    "Select Analysis Mode",
+    ["Single Shipment", "Batch Shipment"],
+    horizontal=True
 )
 
-# ======================================================
-# LOAD MODEL
-# ======================================================
+# ======================================
+# LOAD MODEL & SCALER  
+# ======================================
 
 model = joblib.load("models/delay_model.pkl")
 scaler = joblib.load("models/scaler.pkl")
 
+# ======================================
+# LOAD SYSTEM DATA (FOR MEANS & CONSTANTS)
+# ======================================
+
 df_system = pd.read_csv("data/processed/dataset_with_risk_levels.csv")
 
+# Training feature order (EXACTLY as used in model training)
+training_features = [
+    'Latitude', 'Longitude', 'Inventory_Level', 'Temperature', 'Humidity',
+    'Precipitation(mm)', 'Waiting_Time', 'User_Transaction_Amount',
+    'User_Purchase_Frequency', 'Asset_Utilization', 'Demand_Forecast',
+    'hour', 'day_of_week', 'peak_hour',
+    'Traffic_Status_Detour', 'Traffic_Status_Heavy',
+    'Asset_ID_Truck_10', 'Asset_ID_Truck_2', 'Asset_ID_Truck_3',
+    'Asset_ID_Truck_4', 'Asset_ID_Truck_5', 'Asset_ID_Truck_6',
+    'Asset_ID_Truck_7', 'Asset_ID_Truck_8', 'Asset_ID_Truck_9',
+    'Asset_ID_Truck_10'
+]
+
+# Compute feature means
+feature_means = df_system[training_features].mean()
+
+# Operational baseline time
 operational_base_time = df_system["Waiting_Time"].mean()
 
+# Reconstruct traffic level
 df_system["traffic_level"] = df_system.apply(
     lambda row: "Heavy" if row["Traffic_Status_Heavy"] == 1
     else ("Detour" if row["Traffic_Status_Detour"] == 1 else "Clear"),
@@ -102,54 +114,82 @@ traffic_impact = (
 
 clear_factor = traffic_impact.min()
 
-# ======================================================
-# SIDEBAR INPUT PANEL
-# ======================================================
-
-with st.sidebar:
-    st.header("📦 Shipment Inputs")
-
+# ======================================
+# USER INPUTS (Only Important Ones)
+# ======================================
+if mode == "Single Shipment":
+    st.divider()
+    st.write("Enter shipment details to assess delivery risk and ETA optimization.")
     latitude = st.number_input("Latitude", value=19.0760)
     longitude = st.number_input("Longitude", value=72.8777)
 
     traffic = st.selectbox("Traffic Level", ["Clear", "Detour", "Heavy"])
 
-    asset_utilization = st.slider("Asset Utilization (%)", 50, 100, 75)
-    precipitation = st.slider("Precipitation (mm)", 0, 50, 10)
-    waiting_time = st.slider("Waiting Time (min)", 10, 60, 30)
+    asset_utilization = st.slider(
+        "Asset Utilization (%)",
+        min_value=50,
+        max_value=100,
+        value=75
+    )
+
+    precipitation = st.slider(
+        "Precipitation (mm)",
+        min_value=0,
+        max_value=50,
+        value=10
+    )
+
+    waiting_time = st.slider(
+        "Expected Waiting Time (minutes)",
+        min_value=10,
+        max_value=60,
+        value=30
+    )
 
     hour = st.slider("Hour of Day", 0, 23, 14)
     peak_hour = 1 if hour in [8,9,10,17,18,19] else 0
+    user_transaction_amount = st.number_input(
+        "User Transaction Amount ($)",
+        min_value=10,
+        max_value=10000,
+        value=100
+    )   
+    shipping_cost = st.number_input(
+        "Shipping Cost ($)",
+        min_value=1,
+        max_value=1000,
+        value=10
+    )
 
-    st.markdown("---")
-    st.header("💰 Financial Inputs")
-
-    order_value = st.number_input("Order Value ($)", 10, 10000, 500)
-    shipping_cost = st.number_input("Shipping Cost ($)", 5, 500, 50)
-    is_express = st.checkbox("Express Shipping")
-
-    analyze = st.button("🚀 Analyze Shipment")
-
-# ======================================================
+# ======================================
 # ANALYSIS
-# ======================================================
+# ======================================
 
-if mode == "Single Shipment" and analyze:
+if mode == "Single Shipment" and st.button("Analyze Shipment"):
 
 
+    # Get exact training feature order
     training_features = scaler.feature_names_in_
+
+    # Start with mean values for all features
     feature_means = df_system[training_features].mean()
 
+    # Create base input row
     input_data = pd.DataFrame([feature_means], columns=training_features)
 
+    # Overwrite with user inputs
     input_data["Latitude"] = latitude
     input_data["Longitude"] = longitude
     input_data["Precipitation(mm)"] = precipitation
     input_data["Waiting_Time"] = waiting_time
+    input_data["User_Transaction_Amount"] = user_transaction_amount
     input_data["Asset_Utilization"] = asset_utilization
     input_data["hour"] = hour
     input_data["peak_hour"] = peak_hour
 
+    
+    # Encode traffic
+    
     input_data["Traffic_Status_Heavy"] = 0
     input_data["Traffic_Status_Detour"] = 0
 
@@ -158,14 +198,20 @@ if mode == "Single Shipment" and analyze:
     elif traffic == "Detour":
         input_data["Traffic_Status_Detour"] = 1
 
+
+    # Ensure correct column order
     input_data = input_data[training_features]
 
+    # Scale
     scaled_data = scaler.transform(input_data)
+
+    # Predict
     delay_probability = model.predict_proba(scaled_data)[0][1]
 
-    # ------------------------
-    # Core Logic
-    # ------------------------
+
+    # ==================================
+    # DECISION ENGINE
+    # ==================================
 
     risk = classify_risk(delay_probability)
 
@@ -182,7 +228,6 @@ if mode == "Single Shipment" and analyze:
     )
 
     action = get_action(risk, asset_utilization)
-    formatted_action = action.replace("_", " ")
 
     message = generate_notification(
         risk,
@@ -190,242 +235,301 @@ if mode == "Single Shipment" and analyze:
         optimized_eta,
         traffic
     )
+ # ==================================
+# BASIC FINANCIAL IMPACT
+# ==================================
 
-    delay_hours, expected_loss = calculate_financial_impact(
-        delay_probability,
-        operational_base_time,
-        order_value,
-        shipping_cost,
-        is_express
+# Estimate delay hours
+    delay_hours = delay_probability * operational_base_time
+
+    # SLA penalty
+    if delay_hours > 60:
+        sla_penalty = 0.15 * user_transaction_amount
+    elif delay_hours > 30:
+        sla_penalty = 0.08 * user_transaction_amount
+    else:
+        sla_penalty = 0
+
+    # Refund risk
+    refund_cost = 0.05 * user_transaction_amount * delay_probability
+
+    # Extra shipping cost
+    extra_shipping_cost = 0.2 * shipping_cost if delay_probability > 0.5 else 0
+
+    # Total delay cost
+    total_delay_cost = (
+        sla_penalty +
+        refund_cost +
+        extra_shipping_cost
     )
 
-    eta_improvement = baseline_eta - optimized_eta
-    improvement_percent = (
-        (eta_improvement / baseline_eta) * 100
-        if baseline_eta != 0 else 0
-    )
-    
-    # ======================================================
-    # EXECUTIVE SUMMARY CARD
-    # ======================================================
+    # Expected loss
+    expected_loss = delay_probability * total_delay_cost
+
+
+    # ==================================
+    # DISPLAY
+    # ==================================
+
+    # st.subheader("📊 Analysis Results")
+
+    # st.write("**Delay Probability:**", round(delay_probability, 3))
+    # st.write("**Risk Level:**", risk)
+    # st.write("**Action Taken:**", action)
+    # st.write("**Baseline ETA:**", round(baseline_eta, 2), "minutes")
+    # st.write("**Optimized ETA:**", round(optimized_eta, 2), "minutes")
+
+    # if risk in ["High", "Critical"]:
+    #     st.error("⚠ Shipment delay risk detected.")
+    # elif risk == "Medium":
+    #     st.warning("🟡 Moderate risk detected. Monitoring active.")
+    # else:
+    #     st.success("🟢 Shipment is on schedule.")
+
+    # st.subheader("📩 Customer Notification")
+    # st.info(message)
+    # st.subheader("💰 Financial Impact")
+
+    # col1, col2 = st.columns(2)
+
+    # col1.metric("Expected Delay (min)", round(delay_hours, 2))
+    # col2.metric("Expected Financial Loss ($)", f"${expected_loss:.2f}")
+
+    # if expected_loss > 150:
+    #     st.error("⚠ High financial exposure")
+    # elif expected_loss > 60:
+    #     st.warning("🟡 Moderate financial exposure")
+    # else:
+    #     st.success("🟢 Low financial exposure")
+    st.divider()
+
+    # ======================================
+    # EXECUTIVE SUMMARY
+    # ======================================
 
     st.markdown(f"""
     <div class="section-card">
     <h3>🧠 Executive Summary</h3>
     Delay Probability: <b>{round(delay_probability,3)}</b><br>
     Risk Level: <b>{risk}</b><br>
-    ETA Improvement: <b>{round(improvement_percent,1)}%</b><br>
-    Financial Exposure: <b>${expected_loss:.2f}</b>
+    Expected Financial Exposure: <b>${expected_loss:.2f}</b>
     </div>
     """, unsafe_allow_html=True)
 
-    # ======================================================
+    # ======================================
     # KPI ROW
-    # ======================================================
+    # ======================================
 
     col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric("Delay Probability", round(delay_probability,3))
+    col1.metric("Delay Probability", round(delay_probability, 3))
     col2.metric("Risk Level", risk)
-    col3.metric("Baseline ETA", round(baseline_eta,2))
-    col4.metric("Optimized ETA", round(optimized_eta,2))
+    col3.metric("Baseline ETA", round(baseline_eta, 2))
+    col4.metric("Optimized ETA", round(optimized_eta, 2))
 
     st.divider()
 
-    # ======================================================
-    # ACTION + FINANCIAL PANELS
-    # ======================================================
+    # ======================================
+    # ACTION + FINANCIAL
+    # ======================================
 
     colA, colB = st.columns(2)
-
-    # Risk Color
-    risk_colors = {
-        "Low": "#22c55e",
-        "Medium": "#facc15",
-        "High": "#f97316",
-        "Critical": "#ef4444"
-    }
-
-    risk_color = risk_colors.get(risk, "#ffffff")
 
     colA.markdown(f"""
     <div class="section-card">
     <h3>🚦 Recommended Action</h3>
-    <span class="badge" style="background-color:{risk_color}; color:black;">
-    {formatted_action}
-    </span>
+    <p style="font-size:18px;">{action}</p>
     </div>
     """, unsafe_allow_html=True)
-
-    # Financial color
-    financial_color = "#22c55e"
-    if expected_loss > 100:
-        financial_color = "#ef4444"
-    elif expected_loss > 40:
-        financial_color = "#facc15"
 
     colB.markdown(f"""
     <div class="section-card">
-    <h3>💰 Financial Exposure</h3>
-    Expected Delay: <b>{round(delay_hours,2)} minutes</b><br><br>
-    Expected Loss: <span style="color:{financial_color}; font-weight:700;">
-    ${expected_loss:.2f}
-    </span>
+    <h3>💰 Financial Impact</h3>
+    Expected Delay: <b>{round(delay_hours,2)} min</b><br><br>
+    Expected Loss: <b>${expected_loss:.2f}</b>
     </div>
     """, unsafe_allow_html=True)
 
     st.divider()
 
-    # ======================================================
-    # VISUAL ANALYTICS
-    # ======================================================
-
-    st.subheader("📈 Risk vs Financial Impact")
-
-    fig, ax = plt.subplots()
-    ax.bar(
-        ["Delay Probability", "Financial Loss"],
-        [delay_probability, expected_loss]
-    )
-
-    ax.set_facecolor("#1e293b")
-    fig.patch.set_facecolor("#0f172a")
-
-    ax.tick_params(colors='white')
-    ax.spines['bottom'].set_color('white')
-    ax.spines['left'].set_color('white')
-
-    st.pyplot(fig)
-
-    st.divider()
-
-    # ======================================================
+    # ======================================
     # CUSTOMER MESSAGE
-    # ======================================================
+    # ======================================
 
-    st.subheader("📩 Customer Communication")
-    st.info(message)
-# ======================================================
+    st.markdown(f"""
+    <div class="section-card">
+    <h3>📩 Customer Communication</h3>
+    {message}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ======================================
 # BATCH SHIPMENT ANALYSIS
-# ======================================================
+# ======================================
 
-if mode == "Batch Shipment (CSV Upload)":
+st.divider()
+if mode == "Batch Shipment":
 
-    st.header("📂 Batch Shipment Intelligence")
+    st.header("📂 Batch Shipment Analysis")
 
     uploaded_file = st.file_uploader(
-        "Upload Shipment CSV",
+        "Upload CSV for Batch Analysis",
         type=["csv"]
     )
-
     if uploaded_file is not None:
 
         df_batch = pd.read_csv(uploaded_file)
 
-        st.write("Preview of Uploaded Data:")
+        st.write("Preview:")
         st.dataframe(df_batch.head())
 
-        required_cols = [
-            "Latitude", "Longitude", "Precipitation(mm)",
-            "Waiting_Time", "Asset_Utilization",
-            "hour", "Traffic_Status_Heavy",
-            "Traffic_Status_Detour",
-            "order_value", "shipping_cost"
-        ]
+        results = []
 
-        missing = [col for col in required_cols if col not in df_batch.columns]
+        training_features = scaler.feature_names_in_
 
-        if missing:
-            st.error(f"Missing required columns: {missing}")
-        else:
+        for _, row in df_batch.iterrows():
 
-            training_features = scaler.feature_names_in_
-
-            results = []
-
-            for _, row in df_batch.iterrows():
-
-                input_data = pd.DataFrame(
-                    [df_system[training_features].mean()],
-                    columns=training_features
-                )
-
-                for col in training_features:
-                    if col in row:
-                        input_data[col] = row[col]
-
-                scaled_data = scaler.transform(input_data)
-                delay_probability = model.predict_proba(scaled_data)[0][1]
-
-                risk = classify_risk(delay_probability)
-
-                baseline_eta = calculate_baseline_eta(
-                    delay_probability,
-                    operational_base_time
-                )
-
-                optimized_eta = calculate_optimized_eta(
-                    delay_probability,
-                    risk,
-                    operational_base_time,
-                    clear_factor
-                )
-
-                delay_hours, expected_loss = calculate_financial_impact(
-                    delay_probability,
-                    operational_base_time,
-                    row["order_value"],
-                    row["shipping_cost"],
-                    False
-                )
-
-                priority_score = delay_probability * expected_loss
-
-                results.append({
-                    "delay_probability": delay_probability,
-                    "risk": risk,
-                    "baseline_eta": baseline_eta,
-                    "optimized_eta": optimized_eta,
-                    "expected_loss": expected_loss,
-                    "priority_score": priority_score
-                })
-
-            df_results = pd.concat(
-                [df_batch.reset_index(drop=True),
-                 pd.DataFrame(results)],
-                axis=1
+            input_data = pd.DataFrame(
+                [df_system[training_features].mean()],
+                columns=training_features
             )
 
-            st.divider()
-            st.subheader("📊 Batch Executive Summary")
+            for col in training_features:
+                if col in row:
+                    input_data[col] = row[col]
 
-            col1, col2, col3 = st.columns(3)
+            scaled_data = scaler.transform(input_data)
+            delay_probability = model.predict_proba(scaled_data)[0][1]
 
-            col1.metric("Total Shipments", len(df_results))
-            col2.metric(
-                "Total Expected Loss ($)",
-                f"${df_results['expected_loss'].sum():,.2f}"
-            )
-            col3.metric(
-                "High/Critical Shipments",
-                len(df_results[df_results["risk"].isin(["High", "Critical"])])
-            )
+            risk = classify_risk(delay_probability)
 
-            st.divider()
-            st.subheader("🏆 Top Priority Shipments")
-
-            df_sorted = df_results.sort_values(
-                "priority_score",
-                ascending=False
+            baseline_eta = calculate_baseline_eta(
+                delay_probability,
+                operational_base_time
             )
 
-            st.dataframe(df_sorted.head(10))
-
-            csv_output = df_sorted.to_csv(index=False).encode('utf-8')
-
-            st.download_button(
-                "📥 Download Full Analysis",
-                csv_output,
-                "batch_analysis_results.csv",
-                "text/csv"
+            optimized_eta = calculate_optimized_eta(
+                delay_probability,
+                risk,
+                operational_base_time,
+                clear_factor
             )
+
+            delay_hours = delay_probability * operational_base_time
+
+    # BASIC COST MODEL (Same as single shipment)
+
+    # SLA penalty
+            if delay_hours > 60:
+                sla_penalty = 0.15 * row["User_Transaction_Amount"]
+            elif delay_hours > 30:
+                sla_penalty = 0.08 * row["User_Transaction_Amount"]
+            else:
+                sla_penalty = 0
+
+    # Refund risk
+            refund_cost = 0.05 * row["User_Transaction_Amount"] * delay_probability
+
+    # Extra shipping cost
+            extra_shipping_cost = 0.2 * row["shipping_cost"] if delay_probability > 0.5 else 0
+
+    # Total delay cost
+            total_delay_cost = (
+                sla_penalty +
+                refund_cost +
+                extra_shipping_cost
+            )
+
+    # Expected loss
+            expected_loss = delay_probability * total_delay_cost
+
+    # Priority score
+            priority_score = delay_probability * expected_loss
+
+
+            results.append({
+                "delay_probability": delay_probability,
+                "risk": risk,
+                "expected_loss": expected_loss,
+                "priority_score": priority_score
+            })
+
+        df_results = pd.concat(
+            [df_batch.reset_index(drop=True),
+            pd.DataFrame(results)],
+            axis=1
+        )
+
+        st.divider()
+
+        total_shipments = len(df_results)
+        total_loss = df_results["expected_loss"].sum()
+        high_risk_count = len(
+            df_results[df_results["risk"].isin(["High", "Critical"])]
+        )
+
+        # =============================
+        # EXECUTIVE SUMMARY CARD
+        # =============================
+
+        st.markdown(f"""
+        <div class="section-card">
+        <h3>📊 Portfolio Executive Intelligence</h3>
+        Total Shipments: <b>{total_shipments}</b><br>
+        High / Critical Risk: <b>{high_risk_count}</b><br>
+        Total Financial Exposure: <b>${total_loss:,.2f}</b>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.divider()
+
+        # =============================
+        # KPI ROW
+        # =============================
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Total Shipments", total_shipments)
+        col2.metric("High Risk Shipments", high_risk_count)
+        col3.metric("Portfolio Exposure ($)", f"${total_loss:,.2f}")
+
+        st.divider()
+
+        # =============================
+        # RISK DISTRIBUTION
+        # =============================
+
+        st.subheader("📈 Risk Distribution")
+
+        risk_counts = df_results["risk"].value_counts()
+
+        st.bar_chart(risk_counts)
+
+        st.divider()
+
+        # =============================
+        # TOP PRIORITY TABLE
+        # =============================
+
+        st.subheader("🏆 Highest Financial Exposure Shipments")
+
+        df_sorted = df_results.sort_values(
+            "expected_loss",
+            ascending=False
+        )
+
+        st.dataframe(df_sorted.head(10), use_container_width=True)
+
+        # =============================
+        # DOWNLOAD BUTTON
+        # =============================
+
+        csv_output = df_sorted.to_csv(index=False).encode('utf-8')
+
+        st.download_button(
+            "📥 Download Full Portfolio Report",
+            csv_output,
+            "batch_analysis_results.csv",
+            "text/csv"
+        )
